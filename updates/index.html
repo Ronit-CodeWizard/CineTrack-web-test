@@ -1,21 +1,266 @@
 <!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Updates — CineTrack</title>
-    <meta name="description" content="Download official CineTrack releases and view changelogs." />
-    <meta property="og:title" content="Updates — CineTrack" />
-    <meta property="og:description" content="Download official CineTrack releases and view changelogs." />
-    <meta property="og:type" content="website" />
-    <meta name="twitter:card" content="summary_large_image" />
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <script src="../config.js"></script>
-  </head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
-  </body>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#0b0b0b">
+<title>Updates — CineTrack</title>
+<style>
+*{box-sizing:border-box}
+html{background:#0b0b0b}
+body{margin:0;min-height:100vh;background:#0b0b0b;color:#fff;font-family:Arial,Helvetica,sans-serif;padding:28px 18px 50px}
+.wrap{width:min(760px,100%);margin:0 auto}
+.logo{font-size:20px;font-weight:800;letter-spacing:4px;margin:8px 0 58px}
+.eyebrow{font-size:11px;letter-spacing:2px;color:#666;margin-bottom:10px}
+h1{font-size:38px;line-height:1.08;margin:0 0 12px;letter-spacing:-1px}
+.subtitle{margin:0;color:#929292;line-height:1.6;font-size:14px}
+.section{margin-top:42px}
+.card{background:#151515;border:1px solid #292929;border-radius:20px;padding:24px}
+.latest{box-shadow:0 20px 70px #0008}
+.version-row{display:flex;align-items:flex-start;justify-content:space-between;gap:18px}
+.version{font-size:25px;font-weight:700}
+.date{font-size:12px;color:#666;margin-top:7px}
+.badge{font-size:10px;letter-spacing:1.5px;color:#000;background:#fff;padding:7px 9px;border-radius:999px;white-space:nowrap}
+.download{display:inline-flex;justify-content:center;align-items:center;text-decoration:none;margin-top:24px;width:100%;padding:14px 18px;border-radius:11px;background:#fff;color:#000;font-weight:700;font-size:14px}
+.download.disabled{background:#2a2a2a;color:#777;pointer-events:none}
+.notes{margin:22px 0 0;color:#a1a1a1;font-size:13px;line-height:1.65;white-space:pre-line}
+.older-title{font-size:16px;font-weight:700;margin-bottom:14px}
+.release{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:18px 0;border-bottom:1px solid #242424}
+.release:last-child{border-bottom:0}
+.release-version{font-size:15px;font-weight:700}
+.release-date{font-size:11px;color:#666;margin-top:5px}
+.small-download{color:#fff;text-decoration:none;font-size:12px;border:1px solid #333;border-radius:9px;padding:9px 12px;white-space:nowrap}
+.small-download:hover{background:#202020}
+.status{color:#777;font-size:13px;line-height:1.6}
+.error{color:#ff9a9a}
+.retry{margin-top:16px;background:#fff;color:#000;border:0;border-radius:9px;padding:10px 14px;font-weight:700;cursor:pointer}
+.footer{text-align:center;color:#555;font-size:11px;margin-top:42px}
+.hidden{display:none}
+@media(max-width:520px){
+  body{padding:22px 14px 42px}
+  .logo{margin-bottom:44px}
+  h1{font-size:32px}
+  .card{padding:20px}
+  .version-row{display:block}
+  .badge{display:inline-block;margin-top:14px}
+  .release{align-items:flex-start}
+}
+</style>
+</head>
+<body>
+<main class="wrap">
+  <div class="logo">CineTrack</div>
+
+  <section>
+    <div class="eyebrow">DOWNLOADS</div>
+    <h1>Updates</h1>
+    <p class="subtitle">Download the latest CineTrack version or access an older release.</p>
+  </section>
+
+  <section class="section">
+    <div id="latestCard" class="card latest hidden">
+      <div class="version-row">
+        <div>
+          <div class="eyebrow">LATEST VERSION</div>
+          <div id="latestVersion" class="version">—</div>
+          <div id="latestDate" class="date"></div>
+        </div>
+        <div class="badge">LATEST</div>
+      </div>
+      <div id="latestNotes" class="notes"></div>
+      <a id="latestDownload" class="download" href="#" target="_blank" rel="noopener">Download latest APK</a>
+    </div>
+
+    <div id="loading" class="status">Loading available releases…</div>
+    <div id="error" class="status error hidden">
+      Unable to load the release list right now.
+      <br>
+      <button id="retry" class="retry">Try again</button>
+    </div>
+  </section>
+
+  <section id="olderSection" class="section hidden">
+    <div class="older-title">Older versions</div>
+    <div id="olderList" class="card"></div>
+  </section>
+
+  <div class="footer">© CineTrack</div>
+</main>
+
+<script>
+const API_URL = "https://api.github.com/repos/official-ronit-codewizard/CineTrack/releases?per_page=100";
+
+const loading = document.getElementById("loading");
+const error = document.getElementById("error");
+const latestCard = document.getElementById("latestCard");
+const latestVersion = document.getElementById("latestVersion");
+const latestDate = document.getElementById("latestDate");
+const latestNotes = document.getElementById("latestNotes");
+const latestDownload = document.getElementById("latestDownload");
+const olderSection = document.getElementById("olderSection");
+const olderList = document.getElementById("olderList");
+
+function cleanVersion(tag) {
+  if (!tag) return "";
+  return tag
+    .replace(/^CineTrack[-_]?/i, "")
+    .replace(/^v/i, "")
+    .trim();
+}
+
+function versionParts(value) {
+  const m = String(value || "").match(/(\d+)\.(\d+)\.(\d+)/);
+  return m ? [Number(m[1]), Number(m[2]), Number(m[3])] : [0,0,0];
+}
+
+function compareVersions(a, b) {
+  const x = versionParts(a), y = versionParts(b);
+  for (let i = 0; i < 3; i++) {
+    if (x[i] !== y[i]) return y[i] - x[i];
+  }
+  return 0;
+}
+
+function apkAsset(release) {
+  const assets = Array.isArray(release.assets) ? release.assets : [];
+  return assets.find(a =>
+    /\.apk$/i.test(a.name || "") &&
+    !/debug/i.test(a.name || "")
+  ) || assets.find(a => /\.apk$/i.test(a.name || ""));
+}
+
+function formatDate(value) {
+  if (!value) return "";
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return "";
+  return d.toLocaleDateString(undefined, {
+    year: "numeric",
+    month: "short",
+    day: "numeric"
+  });
+}
+
+function cleanNotes(text) {
+  if (!text) return "";
+  return text
+    .replace(/^#+\s*/gm, "")
+    .replace(/!\[[^\]]*\]\([^)]+\)/g, "")
+    .trim();
+}
+
+function showError() {
+  loading.classList.add("hidden");
+  latestCard.classList.add("hidden");
+  olderSection.classList.add("hidden");
+  error.classList.remove("hidden");
+}
+
+async function loadReleases() {
+  loading.classList.remove("hidden");
+  error.classList.add("hidden");
+  latestCard.classList.add("hidden");
+  olderSection.classList.add("hidden");
+  olderList.innerHTML = "";
+
+  try {
+    const response = await fetch(API_URL, {
+      headers: { "Accept": "application/vnd.github+json" },
+      cache: "no-store"
+    });
+
+    if (!response.ok) throw new Error("GitHub API request failed");
+
+    const releases = await response.json();
+
+    const usable = releases
+      .filter(r => !r.draft && !r.prerelease)
+      .map(r => ({
+        ...r,
+        displayVersion: cleanVersion(r.tag_name),
+        apk: apkAsset(r)
+      }))
+      .filter(r => /^\d+\.\d+\.\d+$/.test(r.displayVersion))
+      .sort((a,b) => {
+        const versionOrder = compareVersions(a.displayVersion, b.displayVersion);
+        if (versionOrder !== 0) return versionOrder;
+        return new Date(b.published_at || b.created_at || 0) -
+               new Date(a.published_at || a.created_at || 0);
+      });
+
+    loading.classList.add("hidden");
+
+    if (!usable.length) {
+      error.textContent = "No published CineTrack releases are available yet.";
+      error.classList.remove("hidden");
+      return;
+    }
+
+    const latest = usable[0];
+
+    latestVersion.textContent = latest.displayVersion;
+    latestDate.textContent = formatDate(latest.published_at || latest.created_at);
+    latestNotes.textContent = cleanNotes(latest.body);
+
+    if (latest.apk && latest.apk.browser_download_url) {
+      latestDownload.href = latest.apk.browser_download_url;
+      latestDownload.textContent = "Download CineTrack " + latest.displayVersion;
+      latestDownload.classList.remove("disabled");
+    } else {
+      latestDownload.removeAttribute("href");
+      latestDownload.textContent = "APK not available";
+      latestDownload.classList.add("disabled");
+    }
+
+    latestCard.classList.remove("hidden");
+
+    const older = usable.slice(1);
+
+    if (older.length) {
+      olderSection.classList.remove("hidden");
+
+      older.forEach(release => {
+        const row = document.createElement("div");
+        row.className = "release";
+
+        const info = document.createElement("div");
+        const version = document.createElement("div");
+        version.className = "release-version";
+        version.textContent = release.displayVersion;
+
+        const date = document.createElement("div");
+        date.className = "release-date";
+        date.textContent = formatDate(release.published_at || release.created_at);
+
+        info.appendChild(version);
+        info.appendChild(date);
+
+        if (release.apk && release.apk.browser_download_url) {
+          const link = document.createElement("a");
+          link.className = "small-download";
+          link.href = release.apk.browser_download_url;
+          link.target = "_blank";
+          link.rel = "noopener";
+          link.textContent = "Download APK";
+          row.appendChild(info);
+          row.appendChild(link);
+        } else {
+          const unavailable = document.createElement("span");
+          unavailable.className = "release-date";
+          unavailable.textContent = "APK unavailable";
+          row.appendChild(info);
+          row.appendChild(unavailable);
+        }
+
+        olderList.appendChild(row);
+      });
+    }
+  } catch (e) {
+    showError();
+  }
+}
+
+document.getElementById("retry").addEventListener("click", loadReleases);
+loadReleases();
+</script>
+</body>
 </html>
