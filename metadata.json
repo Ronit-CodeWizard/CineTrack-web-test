@@ -1,6 +1,6 @@
 {
-  "name": "CineTrack Web",
-  "description": "Movie and TV show tracking web application with watchlist, updates, and account management.",
+  "name": "CineTrack",
+  "description": "A cinematic movie and TV tracking experience for Android.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }
